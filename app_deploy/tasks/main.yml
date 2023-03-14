@@ -1,0 +1,129 @@
+---
+- name: Update yum cache.
+  yum:
+    update_cache: true
+    
+- name: Install app packages.
+  yum:
+    name:
+      - "@Development Tools"
+      - libxml2-devel
+      - zlib
+      - zlib-devel
+      - openssl-static
+      - nodejs
+    state: latest
+
+- name: Upload ruby.
+  copy:
+    src: "./files/ruby-2.6.9.tar.gz"
+    dest: "/usr/src/ruby-2.6.9.tar.gz"
+
+#- name: Unpacking ruby source.
+#  unarchive:
+#    src: "/usr/src/ruby-2.6.9.tar.gz"
+#    dest: "/usr/src/"
+#    remote_src: yes
+#    creates: "/usr/src/ruby-2.6.9.tar.gz"
+#  register: ruby_source_unpack
+#  become: true
+
+#- name: Config ruby.
+#  command: "./configure"
+#  args:
+#    chdir: "/usr/src/ruby-2.6.9/"
+#  when: ruby_source_unpack.changed
+#  register: ruby_configure
+#  become: true
+
+- name: Make install ruby.
+  shell: |
+    cd /usr/src
+    tar -xzvf ruby-*
+    cd ruby-*
+    ./configure
+    make && make install
+  become: true
+
+- name: Add gem PATH.
+  lineinfile:
+    path: "/home/ansible/.bashrc"
+    insertafter: EOF
+    line: 'export GEM_HOME="$HOME/.gem"'
+
+- name: Gem update.
+  command: "gem update --system"
+  become: yes
+  become_user: ansible
+
+- name: Install Gem nokogiri -v '1.8.2'.
+  command: "gem install nokogiri -v '1.8.2' --source 'https://rubygems.org/'"
+  become: yes
+  become_user: ansible
+
+- name: Install Gem bundle.
+  command: "gem install bundle"
+  become: yes
+  become_user: ansible
+
+- name: Create data directory
+  file:
+    path: "/home/ansible/xpaste_practicum"
+    mode: 0777
+    owner: ansible
+    group: ansible
+    state: directory
+
+- name: Upload app.
+  copy:
+    src: "./files/xpaste_practicum.tar.xz"
+    dest: "/home/ansible/xpaste_practicum.tar.xz"
+
+- name: Unpacking app.
+  unarchive:
+    src: "/home/ansible/xpaste_practicum.tar.xz"
+    dest: "/home/ansible/"
+    remote_src: true
+
+- name: Bundle config.
+  command: "bundle config build.nokogiri --use-system-libraries"
+  args:
+    chdir: "/home/ansible/xpaste_practicum"
+  become: yes
+  become_user: ansible
+
+- name: Bundle install.
+  command: "bundle install --no-cache --without development"
+  args:
+    chdir: "/home/ansible/xpaste_practicum"
+  become: yes
+  become_user: ansible
+
+- name: Upload service.
+  copy:
+    src: "./files/ruby-app.service"
+    dest: "/usr/lib/systemd/system/ruby-app.service"
+  become: true
+
+- name: Open 80 and 443 ports.
+  ansible.posix.firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: true
+  loop:
+    - 80/tcp
+    - 443/tcp
+
+- name: Disable SELinux.
+  ansible.posix.selinux:
+    state: disabled
+
+- name: Restart services.
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop:
+    - nginx
+    - ruby-app

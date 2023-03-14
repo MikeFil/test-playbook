@@ -1,0 +1,20 @@
+[Unit]
+Description=ruby APP
+
+[Service]
+Type=simple
+User=ansible
+WorkingDirectory=/home/ansible/xpaste_practicum/
+ExecStart=/bin/bash -lc 'bundle exec rake db:migrate && bundle exec puma -b unix:///tmp/puma.sock -e $RAILS_ENV config.ru'
+Restart=on-failure
+Environment="SECRET_KEY_BASE=20f23229d677470667ba1402f28c5c5b"
+Environment="RAILS_ENV=production"
+Environment="RAILS_LOG_TO_STDOUT=1"
+Environment="DB_HOST=127.0.0.1"
+Environment="DB_PORT=5432"
+Environment="DB_NAME=rubyapp"
+Environment="DB_USER=ruby"
+Environment="DB_PASSWORD=rubypassword"
+
+[Install]
+WantedBy=multi-user.target

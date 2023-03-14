@@ -1,0 +1,5 @@
+---
+db_name: "rubyapp"
+db_user: "ruby"
+db_password: "rubypassword"
+#allow_world_readable_tmpfiles: true

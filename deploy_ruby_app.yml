@@ -1,0 +1,26 @@
+---
+- name: Deploy ruby app
+  become: true
+  hosts: centos
+  vars:
+    nginx_conf_template: "xpaste_practicum/config/nginx.conf"
+
+  pre_tasks:
+  - name: "add repos"
+    yum:
+      name:
+        - epel-release
+        - centos-release-scl
+
+  tasks:
+  - name: "Install nginx"
+    include_role:
+      name: geerlingguy.nginx
+
+  - name: "Install and config pgsql"
+    include_role:
+      name: pgsql
+
+  - name: "Install and config app"
+    include_role:
+      name: app_deploy

@@ -1,0 +1,61 @@
+---
+- name: Install PostgreSQL packages.
+  yum:
+    name:
+      - postgresql
+      - postgresql-server
+      - postgresql-contrib
+      - postgresql-libs
+      - postgresql-devel
+    state: present
+    exclude: python-unversioned-command
+
+- name: Install PostgreSQL Python libraries.
+  yum:
+    name: python-psycopg2
+    state: present
+
+- name: Find out if PostgreSQL is initialized.
+  ansible.builtin.stat:
+    path: "/var/lib/pgsql/data/pg_hba.conf"
+  register: postgres_data
+
+- name: Initialize PostgreSQL.
+  shell: "postgresql-setup initdb"
+  when: not postgres_data.stat.exists
+
+- name: "Update pg_hba.conf"
+  lineinfile:
+    path: "/var/lib/pgsql/data/pg_hba.conf"
+    regexp: "host    all             all             127.0.0.1/32            ident"
+    line: "host    all             all             127.0.0.1/32            md5"
+
+- name: Enable PostgreSQL.
+  service:
+    name: postgresql
+    state: started
+    enabled: true
+
+- name: Create app database.
+  community.postgresql.postgresql_db:
+    state: present
+    name: "{{ db_name }}"
+  become: yes
+  become_user: postgres
+
+- name: Create db user.
+  community.postgresql.postgresql_user:
+    state: present
+    name: "{{ db_user }}"
+    password: "{{ db_password }}"
+  become: yes
+  become_user: postgres
+
+- name: Grant db user access to app db.
+  community.postgresql.postgresql_privs:
+    type: database
+    database: "{{ db_name }}"
+    role: "{{ db_user }}"
+    privs: ALL
+  become: true
+  become_user: postgres
