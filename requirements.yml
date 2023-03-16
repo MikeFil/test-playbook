@@ -6,6 +6,4 @@ roles:
     version: latest
   - name: community.general
     version: latest
-  - name: rvm.ruby
-    version: latest
   - name: ansible.posix
